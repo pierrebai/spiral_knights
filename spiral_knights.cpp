@@ -94,29 +94,37 @@ const vector<pair<int64_t, int64_t>> moves_for_piece_type(int argc, const char**
 // Unoccupied positions are outside the size of the list or zero.
 vector<int8_t> occupied_positions;
 
-int8_t knight_color_to_attack_bit(int64_t knight_color) {
+int8_t knight_color_to_attack_bit(int8_t knight_color) {
    return int8_t(1) << knight_color;
 }
 
-int64_t find_lowest_unoccupied_position_for_knight(size_t lowest_unoccupied, int8_t knight_color) {
-    const int8_t other_attack_bits = ~knight_color_to_attack_bit(knight_color);
+
+bool is_position_valid_for_color(int64_t position_number, int8_t knight_color, int8_t number_of_knight_colors, bool rock_paper_scissors) {
+    if (position_number >= static_cast<int64_t>(occupied_positions.size())) {
+        return true;
+    }
+    int8_t value = occupied_positions[position_number];
+    if (value < 0) {
+        return false;
+    }
+    if (rock_paper_scissors) {
+        int8_t next_color = (knight_color + 1) % number_of_knight_colors;
+        int8_t next_attack_bit = knight_color_to_attack_bit(next_color);
+        return (value & next_attack_bit) == 0;
+    } else {
+        return (value & ~knight_color_to_attack_bit(knight_color)) == 0;
+    }
+}
+
+
+int64_t find_lowest_unoccupied_position_for_knight(size_t lowest_unoccupied, int8_t knight_color, int8_t number_of_knight_colors, bool rock_paper_scissors) {
     for (int64_t i = lowest_unoccupied; i < static_cast<int64_t>(occupied_positions.size()); i++) {
-        if (occupied_positions[i] >= 0 && (occupied_positions[i] & other_attack_bits) == 0) {
+        if (is_position_valid_for_color(i, knight_color, number_of_knight_colors, rock_paper_scissors)) {
             return i;
         }
     }
     return static_cast<int64_t>(occupied_positions.size());
 }
-
-int64_t find_lowest_unoccupied_position(size_t lowest_unoccupied, int8_t all_attacks) {
-    for (int64_t i = lowest_unoccupied; i < static_cast<int64_t>(occupied_positions.size()); i++) {
-        if (occupied_positions[i] >= 0 && occupied_positions[i] != all_attacks) {
-            return i;
-        }
-    }
-    return static_cast<int64_t>(occupied_positions.size());
-}
-
 
 
 pair<int64_t, int64_t> spiral_number_to_position(int64_t n) {
@@ -181,7 +189,7 @@ int64_t position_to_spiral_number(pair<int64_t, int64_t> position) {
 }
 
 
-void fill_attacked_positions(int64_t knight_position_number, int64_t knight_color, const vector<pair<int64_t, int64_t>>& deltas) {
+void fill_attacked_positions(int64_t knight_position_number, int8_t knight_color, const vector<pair<int64_t, int64_t>>& deltas) {
     pair<int64_t, int64_t> knight_position = spiral_number_to_position(knight_position_number);
     const int8_t attack_bit = knight_color_to_attack_bit(knight_color);
 
@@ -198,38 +206,29 @@ void fill_attacked_positions(int64_t knight_position_number, int64_t knight_colo
 }
 
 
-bool is_position_valid_for_color(int64_t position_number, int64_t knight_color) {
-    if (position_number >= static_cast<int64_t>(occupied_positions.size())) {
-        return true;
-    }
-    int8_t value = occupied_positions[position_number];
-    if (value < 0) {
-        return false;
-    }
-    return (value & ~knight_color_to_attack_bit(knight_color)) == 0;
-}
-
-
-
 int main(int argc, const char** argv) {
 
     try {
         int8_t number_of_knight_colors = int8_t(std::max(1, min(8, argc > 1 ? atoi(argv[1]) : 2)));
-        if (number_of_knight_colors > 8) {
-            throw std::invalid_argument("Number of knight colors must be between 1 and 8");
+        if (number_of_knight_colors > 7) {
+            throw std::invalid_argument("Number of knight colors must be between 1 and 7");
         }
         int8_t current_color = 0;
 
         int8_t all_attacks = 0;
-        for (int64_t i = 0; i < number_of_knight_colors; i++) {
+        for (int8_t i = 0; i < number_of_knight_colors; ++i) {
             all_attacks |= knight_color_to_attack_bit(i);
         }
 
         int64_t square_size = int64_t(std::max(3, argc > 2 ? atoi(argv[2]) : 1000));
         int64_t square_area = square_size * square_size;
-        // occupied_positions.resize(size_t(square_area * 1.1), 0);
+        occupied_positions.resize(size_t(square_area * 1.1), 0);
 
         string png_filename = argc > 3 ? argv[3] : "knights.png";
+        const bool rock_paper_scissors = (png_filename.find("rock") != string::npos);
+        if (rock_paper_scissors) {
+            cout << "Using rock-paper-scissors rules for knight placement\n";
+        }
 
         vector<vector<pair<int64_t, int64_t>>> knight_moves_deltas_by_color = {
             moves_for_piece_type(argc, argv, 4),
@@ -243,12 +242,9 @@ int main(int argc, const char** argv) {
         };
 
         vector<int64_t> lowest_unoccupied_for_colors(number_of_knight_colors, 0);
-        // int64_t lowest_unoccupied = 0;
 
         while (true) {
-            int64_t possible_number = find_lowest_unoccupied_position_for_knight(lowest_unoccupied_for_colors[current_color], current_color);
-            // lowest_unoccupied = find_lowest_unoccupied_position(lowest_unoccupied, all_attacks);
-            // int64_t possible_number = lowest_unoccupied;
+            int64_t possible_number = find_lowest_unoccupied_position_for_knight(lowest_unoccupied_for_colors[current_color], current_color, number_of_knight_colors, rock_paper_scissors);
             if (possible_number > square_area)
             break;
             while (true) {
@@ -258,7 +254,7 @@ int main(int argc, const char** argv) {
                     fill_attacked_positions(possible_number, current_color, knight_moves_deltas_by_color[current_color]);
                     lowest_unoccupied_for_colors[current_color] = possible_number + 1;
                     break;
-                } else if (is_position_valid_for_color(possible_number, current_color)) {
+                } else if (is_position_valid_for_color(possible_number, current_color, number_of_knight_colors, rock_paper_scissors)) {
                     occupied_positions[possible_number] = -current_color - 1;
                     fill_attacked_positions(possible_number, current_color, knight_moves_deltas_by_color[current_color]);
                     lowest_unoccupied_for_colors[current_color] = possible_number + 1;
