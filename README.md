@@ -22,6 +22,11 @@ The available move sets are:
 - da: dabbaba: jumps to 0 x 2 away
 - dr: dromedary: jumps to 0 x 3 away
 
+If the name of the output PNG contains the word "rock" (for example "rocks.png") then
+the attacks are determined like in the rock-paper-scissors game: a knight is only
+vulnerable to one type of other knights. This results in mostly uninteresting patterns,
+as it give more freedom of placement. The patterns look like waves of colors.
+
 The program is quite fast. On my lowly Intel i3770 from 2008, generating a spiral
 of side 1000 is nearly instantaneous. One of size 10 000 takes a few seconds.
 
@@ -32,3 +37,7 @@ Here is an image showing the result of 4 knights in a 10 000 x 10 000 spiral:
 Here is an image showing the result of a knight and a zebra in a 4 000 x 4 000 spiral:
 
 ![knight and zebra 4k spiral](knights-and-zebra.png)
+
+Here is an image showing the result of rock-paper-scissors with 3 knights:
+
+![3 knights in rock-paper-scissors fight](rocks.png)
